@@ -4,6 +4,7 @@ import type {
   TicketDetail,
   TicketFilters,
   TicketListItem,
+  TicketPriority,
   TicketStatus,
 } from '../types/api';
 import { request } from './client';
@@ -58,5 +59,11 @@ export const ticketsApi = {
     request<TicketDetail>(`/tickets/${id}/assignment`, {
       method: 'PATCH',
       body: JSON.stringify({ agentId }),
+    }),
+
+  escalateTicket: (id: number, newPriority: TicketPriority, reason: string) =>
+    request<TicketDetail>(`/tickets/${id}/escalate`, {
+      method: 'POST',
+      body: JSON.stringify({ newPriority, reason }),
     }),
 };

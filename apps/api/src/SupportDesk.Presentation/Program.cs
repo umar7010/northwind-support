@@ -1,3 +1,4 @@
+using SupportDesk.Application.Options;
 using System.Text.Json.Serialization;
 using SupportDesk.Application;
 using SupportDesk.Infrastructure;
@@ -26,6 +27,9 @@ builder.Services.AddCors(options => options.AddPolicy(
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.Configure<SlaOptions>(
+    builder.Configuration.GetSection(SlaOptions.SectionName));
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);

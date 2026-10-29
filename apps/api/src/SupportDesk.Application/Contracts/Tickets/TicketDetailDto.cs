@@ -25,6 +25,11 @@ public sealed class TicketDetailDto
 
     public AgentSummaryDto? AssignedAgent { get; set; }
 
+    public string? UnassignedReason { get; set; }
+
+    public IReadOnlyList<TicketEscalationDto> EscalationHistory { get; set; }
+        = Array.Empty<TicketEscalationDto>();
+
     public DateTime CreatedAtUtc { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }

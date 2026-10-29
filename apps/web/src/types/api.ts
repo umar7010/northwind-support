@@ -64,6 +64,14 @@ export interface TicketListItem {
   slaStatus: SlaStatus;
 }
 
+export interface TicketEscalation {
+  id: number;
+  previousPriority: TicketPriority;
+  newPriority: TicketPriority;
+  reason: string;
+  escalatedAtUtc: string;
+}
+
 export interface TicketDetail {
   id: number;
   reference: string;
@@ -74,11 +82,13 @@ export interface TicketDetail {
   customer: CustomerContact;
   category: CategoryOnTicket;
   assignedAgent: AgentSummary | null;
+  unassignedReason: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
   dueAtUtc: string | null;
   resolvedAtUtc: string | null;
   slaStatus: SlaStatus;
+  escalationHistory: TicketEscalation[];
 }
 
 /** Everything the ticket list screen can narrow the results by. */

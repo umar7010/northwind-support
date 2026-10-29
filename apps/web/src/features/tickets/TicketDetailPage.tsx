@@ -6,6 +6,8 @@ import { AssignAgentControl } from './components/AssignAgentControl';
 import { StatusActions } from './components/StatusActions';
 import { TicketSummary } from './components/TicketSummary';
 import { useTicket } from './hooks/useTicket';
+import { EscalateTicketControl } from './components/EscalateTicketControl';
+import { EscalationHistory } from './components/EscalationHistory';
 
 export function TicketDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,6 +53,10 @@ export function TicketDetailPage() {
           </div>
 
           <StatusActions ticket={ticket} onUpdated={setData} />
+
+          <EscalateTicketControl ticket={ticket} onUpdated={setData} />
+
+          <EscalationHistory history={ticket.escalationHistory ?? []} />
         </div>
 
         <aside className="detail-layout__side">

@@ -10,6 +10,11 @@ using SupportDesk.Domain.Aggregates.Customers;
 using SupportDesk.Domain.Aggregates.Tickets;
 using SupportDesk.Domain.Repositories;
 using SupportDesk.UnitTests.TestDoubles;
+using Microsoft.Extensions.Options;
+using SupportDesk.Application.Options;
+using SupportDesk.Application.Services;
+using SupportDesk.Domain.Aggregates.Categories;
+using SupportDesk.Application.Features.Tickets.Commands.EscalateTicket;
 
 namespace SupportDesk.UnitTests.Application.Features.Tickets.Commands;
 
@@ -21,11 +26,19 @@ internal sealed class TicketCommandTestContext
 {
     public TicketCommandTestContext()
     {
-        Customers.Setup(c => c.ExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        Customers.Setup(c => c.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Customer(
+            "Contoso Ltd",
+            "support@contoso.example",
+            null,
+            CustomerTier.Premium,
+            Clock.UtcNow));
 
-        Categories.Setup(c => c.ExistsAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        Categories.Setup(c => c.GetByIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Category(
+                "General",
+                requiresSpecialist: false,
+                forcesCriticalPriority: false));
 
         Tickets.Setup(t => t.NextReferenceAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync("TCK-0041");
@@ -44,11 +57,48 @@ internal sealed class TicketCommandTestContext
                 Category = new CategoryDto(1, "General", false)
             });
 
+        var slaCalculator = new SlaCalculator(
+            Options.Create(new SlaOptions
+            {
+                BaseWindowHours = new Dictionary<string, double>
+                {
+                    ["Low"] = 72,
+                    ["Medium"] = 24,
+                    ["High"] = 8,
+                    ["Critical"] = 4
+                },
+                PremiumCustomerMultiplier = 0.5,
+                MinimumWindowHours = 1,
+                AtRiskThresholdPercent = 25
+            }));
+
+        AgentQueries
+            .Setup(a => a.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<SupportDesk.Application.Contracts.Agents.AgentDto>());
+
         var getTicket = new GetTicketQueryHandler(TicketQueries.Object);
 
         RaiseTicket = new RaiseTicketCommandHandler(
-            Tickets.Object, Customers.Object, Categories.Object, UnitOfWork.Object, Clock, getTicket,
+            Tickets.Object,
+            Customers.Object,
+            Categories.Object,
+            AgentQueries.Object,
+            UnitOfWork.Object,
+            Clock,
+            slaCalculator,
+            getTicket,
             NullLogger<RaiseTicketCommandHandler>.Instance);
+
+        EscalateTicket = new EscalateTicketCommandHandler(
+            Tickets.Object,
+            Customers.Object,
+            Categories.Object,
+            AgentQueries.Object,
+            UnitOfWork.Object,
+            Clock,
+            slaCalculator,
+            getTicket,
+            NullLogger<EscalateTicketCommandHandler>.Instance);
 
         ChangeTicketStatus = new ChangeTicketStatusCommandHandler(Tickets.Object, UnitOfWork.Object, Clock, getTicket);
 
@@ -69,6 +119,8 @@ internal sealed class TicketCommandTestContext
 
     public Mock<ITicketQueries> TicketQueries { get; } = new();
 
+    public Mock<IAgentQueries> AgentQueries { get; } = new();
+
     public FixedClock Clock { get; } = new();
 
     public RaiseTicketCommandHandler RaiseTicket { get; }
@@ -79,6 +131,8 @@ internal sealed class TicketCommandTestContext
 
     /// <summary>The ticket handed to the repository by the last create call.</summary>
     public Ticket? AddedTicket { get; private set; }
+
+    public EscalateTicketCommandHandler EscalateTicket { get; }
 
     /// <summary>Makes <see cref="ITicketRepository.GetByIdAsync"/> return this ticket.</summary>
     public Ticket ExistingTicket(Ticket ticket)

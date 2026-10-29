@@ -32,6 +32,8 @@ public sealed class Ticket : AggregateRoot
     /// <summary>Null while the ticket is waiting for an owner.</summary>
     public int? AssignedAgentId { get; private set; }
 
+    public string? UnassignedReason { get; private set; }
+
     public TicketPriority Priority { get; private set; }
 
     public TicketStatus Status { get; private set; }
@@ -111,4 +113,35 @@ public sealed class Ticket : AggregateRoot
         AssignedAgentId = agentId;
         UpdatedAtUtc = nowUtc;
     }
+
+
+    public void SetUnassignedReason(string? reason, DateTime nowUtc)
+    {
+        UnassignedReason = reason;
+        UpdatedAtUtc = nowUtc;
+    }
+
+
+    /// <summary>
+    /// Sets or recalculates the SLA deadline for the ticket.
+    /// </summary>
+    public void SetDueDate(DateTime dueAtUtc, DateTime nowUtc)
+    {
+        DueAtUtc = dueAtUtc;
+        UpdatedAtUtc = nowUtc;
+    }
+
+
+    public void EscalatePriority(TicketPriority newPriority, DateTime nowUtc)
+    {
+        if (newPriority <= Priority)
+        {
+            throw new BusinessRuleViolationException(
+                "Escalation must increase the ticket priority.");
+        }
+
+        Priority = newPriority;
+        UpdatedAtUtc = nowUtc;
+    }
+
 }

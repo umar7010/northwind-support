@@ -21,7 +21,7 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
     /// </remarks>
     public async Task<PagedResult<TicketListItemDto>> GetPagedAsync(TicketQuery query, CancellationToken ct)
     {
-        
+
         var tickets = TicketsWithLabels();
 
         if (!string.IsNullOrWhiteSpace(query.Search))
@@ -81,11 +81,12 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
         return new PagedResult<TicketListItemDto>(items, query.Page, query.PageSize, totalCount);
     }
 
-    public Task<TicketDetailDto?> GetDetailAsync(int id, CancellationToken ct)
+
+    public async Task<TicketDetailDto?> GetDetailAsync(int id, CancellationToken ct)
     {
         var now = clock.UtcNow;
 
-        return TicketsWithLabels()
+        var ticket = await TicketsWithLabels()
             .Where(x => x.Ticket.Id == id)
             .Select(x => new TicketDetailDto
             {
@@ -96,17 +97,49 @@ public sealed class TicketQueries(SupportDbContext db, IClock clock) : ITicketQu
                 Status = x.Ticket.Status,
                 Priority = x.Ticket.Priority,
                 Customer = new CustomerContactDto(
-                    x.Customer.Id, x.Customer.Name, x.Customer.Email, x.Customer.Phone, x.Customer.Tier),
-                Category = new CategoryDto(x.Category.Id, x.Category.Name, x.Category.RequiresSpecialist),
-                AssignedAgent = x.Agent == null ? null : new AgentSummaryDto(x.Agent.Id, x.Agent.FullName),
+                    x.Customer.Id,
+                    x.Customer.Name,
+                    x.Customer.Email,
+                    x.Customer.Phone,
+                    x.Customer.Tier),
+                Category = new CategoryDto(
+                    x.Category.Id,
+                    x.Category.Name,
+                    x.Category.RequiresSpecialist),
+                AssignedAgent = x.Agent == null
+                    ? null
+                    : new AgentSummaryDto(x.Agent.Id, x.Agent.FullName),
+                UnassignedReason = x.Ticket.UnassignedReason,
                 CreatedAtUtc = x.Ticket.CreatedAtUtc,
                 UpdatedAtUtc = x.Ticket.UpdatedAtUtc,
                 DueAtUtc = x.Ticket.DueAtUtc,
                 ResolvedAtUtc = x.Ticket.ResolvedAtUtc,
-                SlaStatus = SlaEvaluator.Evaluate(x.Ticket.DueAtUtc, x.Ticket.ResolvedAtUtc, now)
+                SlaStatus = SlaEvaluator.Evaluate(
+                    x.Ticket.DueAtUtc,
+                    x.Ticket.ResolvedAtUtc,
+                    now)
             })
             .FirstOrDefaultAsync(ct);
+
+        if (ticket is null)
+            return null;
+
+        ticket.EscalationHistory = await db.Set<TicketEscalation>()
+            .AsNoTracking()
+            .Where(e => e.TicketId == id)
+            .OrderByDescending(e => e.EscalatedAtUtc)
+            .ThenByDescending(e => e.Id)
+            .Select(e => new TicketEscalationDto(
+                e.Id,
+                e.PreviousPriority,
+                e.NewPriority,
+                e.Reason,
+                e.EscalatedAtUtc))
+            .ToListAsync(ct);
+
+        return ticket;
     }
+
 
     public async Task<IReadOnlyList<TicketListItemDto>> GetForCustomerAsync(int customerId, CancellationToken ct)
     {
