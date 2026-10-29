@@ -34,11 +34,27 @@ export async function request<T>(path: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: {
       'Content-Type': 'application/json',
+      ...(localStorage.getItem('authToken')
+        ? { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
+        : {}),
       ...(init?.headers ?? {}),
     },
   });
 
   if (!response.ok) {
+    if (response.status === 401 && path !== '/auth/login') {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('agentName');
+
+      const destination = window.location.pathname + window.location.search;
+
+      if (window.location.pathname !== '/login') {
+        window.location.replace(
+          `/login?from=${encodeURIComponent(destination)}`
+        );
+      }
+    }
+
     const problem = await readProblem(response);
 
     throw new ApiError(

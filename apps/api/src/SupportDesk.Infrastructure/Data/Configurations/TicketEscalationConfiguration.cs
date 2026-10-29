@@ -27,6 +27,9 @@ public sealed class TicketEscalationConfiguration
         builder.Property(e => e.EscalatedAtUtc)
             .IsRequired();
 
+        builder.Property(e => e.EscalatedByAgentId)
+            .IsRequired(false);
+
         builder.HasIndex(e => e.TicketId);
     }
 }

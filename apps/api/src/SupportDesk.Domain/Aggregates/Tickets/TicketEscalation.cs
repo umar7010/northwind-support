@@ -12,6 +12,8 @@ public sealed class TicketEscalation
 
     public int TicketId { get; private set; }
 
+    public int? EscalatedByAgentId { get; private set; }
+
     public TicketPriority PreviousPriority { get; private set; }
 
     public TicketPriority NewPriority { get; private set; }
@@ -25,11 +27,13 @@ public sealed class TicketEscalation
         TicketPriority previousPriority,
         TicketPriority newPriority,
         string reason,
-        DateTime escalatedAtUtc)
+        DateTime escalatedAtUtc,
+        int? escalatedByAgentId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
 
         TicketId = ticketId;
+        EscalatedByAgentId = escalatedByAgentId;
         PreviousPriority = previousPriority;
         NewPriority = newPriority;
         Reason = reason.Trim();

@@ -24,7 +24,8 @@ public sealed class EscalateTicketCommandHandler(
     public async Task<TicketDetailDto> HandleAsync(
         int id,
         EscalateTicketRequest request,
-        CancellationToken ct)
+        CancellationToken ct,
+        int? escalatedByAgentId = null)
     {
 
         var ticket = await tickets.GetByIdAsync(id, ct)
@@ -79,7 +80,8 @@ public sealed class EscalateTicketCommandHandler(
             previousPriority,
             request.NewPriority,
             request.Reason,
-            nowUtc);
+            nowUtc,
+            escalatedByAgentId);
 
         await tickets.AddEscalationAsync(escalation, ct);
 

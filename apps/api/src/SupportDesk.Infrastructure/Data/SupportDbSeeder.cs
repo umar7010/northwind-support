@@ -5,6 +5,8 @@ using SupportDesk.Domain.Aggregates.Agents;
 using SupportDesk.Domain.Aggregates.Categories;
 using SupportDesk.Domain.Aggregates.Customers;
 using SupportDesk.Domain.Aggregates.Tickets;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace SupportDesk.Infrastructure.Data;
 
@@ -17,11 +19,30 @@ namespace SupportDesk.Infrastructure.Data;
 /// Every aggregate is built through its own behaviour. The two historical values no behaviour
 /// produces - a ticket's last update and its due date - are set through EF Core directly.
 /// </remarks>
-public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<SupportDbSeeder> logger)
+public sealed class SupportDbSeeder(
+    SupportDbContext db,
+    IClock clock,
+    ILogger<SupportDbSeeder> logger,
+    IPasswordHasher<Agent> passwordHasher)
 {
     /// <summary>Seeds the database, unless it already has tickets in it.</summary>
     public async Task SeedAsync(CancellationToken ct = default)
     {
+        const string devPassword = "NorthwindDev123!";
+
+        var existingAgents = await db.Set<Agent>().ToListAsync(ct);
+
+        foreach (var agent in existingAgents.Where(a => a.PasswordHash is null))
+        {
+            agent.SetPasswordHash(
+                passwordHasher.HashPassword(agent, devPassword));
+        }
+
+        if (existingAgents.Any(a => a.PasswordHash is not null))
+        {
+            await db.SaveChangesAsync(ct);
+        }
+
         if (await db.Set<Ticket>().AnyAsync(ct))
         {
             logger.LogInformation("Seed data already present; skipping.");
@@ -33,6 +54,12 @@ public sealed class SupportDbSeeder(SupportDbContext db, IClock clock, ILogger<S
         var categories = SeedCategories();
         var customers = SeedCustomers(now);
         var agents = SeedAgents(now);
+
+        foreach (var agent in agents)
+        {
+            agent.SetPasswordHash(
+                passwordHasher.HashPassword(agent, devPassword));
+        }
 
         db.AddRange(categories);
         db.AddRange(customers);

@@ -49,6 +49,10 @@ namespace SupportDesk.Infrastructure.Data.Migrations
                     b.Property<int>("MaxOpenTickets")
                         .HasColumnType("int");
 
+                    b.Property<string>("PasswordHash")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("Email")
@@ -246,6 +250,9 @@ namespace SupportDesk.Infrastructure.Data.Migrations
 
                     b.Property<DateTime>("EscalatedAtUtc")
                         .HasColumnType("datetime2");
+
+                    b.Property<int?>("EscalatedByAgentId")
+                        .HasColumnType("int");
 
                     b.Property<int>("NewPriority")
                         .HasColumnType("int");

@@ -7,6 +7,7 @@ using SupportDesk.Application.Features.Tickets.Commands.RaiseTicket;
 using SupportDesk.Application.Features.Tickets.Queries.GetTicket;
 using SupportDesk.Application.Features.Tickets.Queries.SearchTickets;
 using SupportDesk.Application.Features.Tickets.Commands.EscalateTicket;
+using System.Security.Claims;
 
 namespace SupportDesk.Presentation.Controllers;
 
@@ -62,10 +63,15 @@ public sealed class TicketsController : ControllerBase
     /// <summary>Escalates a ticket to a higher priority.</summary>
     [HttpPost("{id:int}/escalate")]
     public Task<TicketDetailDto> Escalate(
-        int id,
-        EscalateTicketRequest request,
-        [FromServices] EscalateTicketCommandHandler handler,
-        CancellationToken ct) =>
-        handler.HandleAsync(id, request, ct);
+    int id,
+    EscalateTicketRequest request,
+    [FromServices] EscalateTicketCommandHandler handler,
+    CancellationToken ct)
+    {
+        var agentId = int.Parse(
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        return handler.HandleAsync(id, request, ct, agentId);
+    }
 
 }

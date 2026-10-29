@@ -71,13 +71,15 @@ public class EscalateTicketCommandHandlerTests
             new EscalateTicketRequest(
                 TicketPriority.High,
                 "Major service disruption"),
-            CancellationToken.None);
+            CancellationToken.None,
+            escalatedByAgentId: 1);
 
         Assert.NotNull(savedEscalation);
         Assert.Equal(TicketPriority.Medium, savedEscalation.PreviousPriority);
         Assert.Equal(TicketPriority.High, savedEscalation.NewPriority);
         Assert.Equal("Major service disruption", savedEscalation.Reason);
         Assert.Equal(context.Clock.UtcNow, savedEscalation.EscalatedAtUtc);
+        Assert.Equal(1, savedEscalation.EscalatedByAgentId);
 
         context.VerifySaved(Times.Once());
     }
