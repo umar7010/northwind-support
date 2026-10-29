@@ -51,4 +51,76 @@ describe('useTicketList', () => {
     expect(result.current.isLoading).toBe(false);
     expect(result.current.data?.items).toHaveLength(1);
   });
+
+  it('fetches tickets when status changes without waiting for search debounce', async () => {
+  const { result } = renderHook(() => useTicketList());
+
+  // Allow the initial request to complete.
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(300);
+  });
+
+  expect(getTickets).toHaveBeenCalledTimes(1);
+
+  // Change only the status filter.
+  act(() => {
+    result.current.updateFilters({ status: 'InProgress' });
+  });
+
+  // Status changes should trigger a request immediately.
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  expect(getTickets).toHaveBeenCalledTimes(2);
+
+  expect(getTickets).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      status: 'InProgress',
+      page: 1,
+    }),
+  );
+});
+
+it('fetches immediately when status changes during search debounce', async () => {
+  const { result } = renderHook(() => useTicketList());
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(300);
+  });
+
+  expect(getTickets).toHaveBeenCalledTimes(1);
+
+  // User starts typing.
+  act(() => {
+    result.current.updateFilters({ search: 'outage' });
+  });
+
+  // Only 100 ms have passed, so search is still debouncing.
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100);
+  });
+
+  expect(getTickets).toHaveBeenCalledTimes(1);
+
+  // User changes status before the search debounce finishes.
+  act(() => {
+    result.current.updateFilters({ status: 'InProgress' });
+  });
+
+  await act(async () => {
+    await Promise.resolve();
+  });
+
+  // The status change must not wait for search debounce.
+  expect(getTickets).toHaveBeenCalledTimes(2);
+
+  expect(getTickets).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      status: 'InProgress',
+      page: 1,
+    }),
+  );
+});
+
 });
